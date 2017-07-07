@@ -1,0 +1,93 @@
+<?php
+/**
+* Implements hook_menu().
+*/
+function ng_node_calender_menu() {
+    $items = array();
+    $items['ng_node/calender_app'] = array(
+        'title' => t('Angular Node Calender'),
+        'page callback' => 'ng_node_calender',
+        'access arguments' => array('access content'),
+    );
+    return $items;
+}
+/**
+ * Page callback for ng_node_calender().
+ */
+function ng_node_calender(){
+
+	$result = db_select('example_task', 'n')
+		    ->fields('n', array('tkid','title','description'))
+		    ->condition('type', 'events','=')
+		    ->execute()
+		    ->fetchAll();
+
+            
+
+    $event_nodes = array();
+    $i = 1;
+    foreach ($result as $key => $value) {                      
+		$node = example_task_load($value->tkid);
+		$node_title = $value->title;
+        $node_description = $value->description;
+		$node_address = $node->field_venue['und'][0]['thoroughfare'].','.$node->field_venue['und'][0]['premise'].','.$node->field_venue['und'][0]['locality'].','.$node->field_venue['und'][0]['postal_code'];
+		$event_nodes['title_'.$i] = $node_title;
+        $event_nodes['description_'.$i] = $node_description;
+		$event_nodes['address_'.$i] = $node_address;
+		$event_nodes['date_'.$i] = date("dS M,Y H:i", strtotime($node->field_event_time['und'][0]['value'])) .' - '. date("dS M,Y H:i", strtotime($node->field_event_time['und'][0]['value2']));
+		$event_nodes['image_'.$i] = isset($node->field_event_image['und']) ? file_create_url($node->field_event_image['und'][0]['uri']) : file_create_url('http://localhost/drupal/sites/default/files/default_images/Fundraising%20(Website).jpg');
+		$event_nodes['start_'.$i] = date("Y-m-d H:i", strtotime($node->field_event_time['und'][0]['value']));
+		$event_nodes['end_'.$i] = date("Y-m-d H:i", strtotime($node->field_event_time['und'][0]['value2']));
+		$event_nodes['lat_'.$i] = $node->field_event_map['und'][0]['lat'];
+		$event_nodes['long_'.$i] = $node->field_event_map['und'][0]['lng'];
+		$i++;
+	}
+    //print'<pre>';print_r($event_nodes);die;
+	drupal_add_js(array(
+    	'ng_node_calender' => $event_nodes
+	), 'setting');
+	
+    angularjs_init_application('ng_node_calender');
+    //CSS files for calender
+    drupal_add_css(drupal_get_path('module', 'ng_node_calender') . '/bootstrap.css');
+    drupal_add_css(drupal_get_path('module', 'ng_node_calender') . '/fullcalendar.css');
+    drupal_add_css(drupal_get_path('module', 'ng_node_calender') . '/calendarDemo.css');
+    //JS files for calender
+    drupal_add_js(drupal_get_path('module', 'ng_node_calender') . '/js/jquery.js');
+    drupal_add_js(drupal_get_path('module', 'ng_node_calender') . '/js/moment.js');
+    drupal_add_js("http://angular-ui.github.io/bootstrap/ui-bootstrap-tpls-0.13.0.js", "external");
+    //drupal_add_js(drupal_get_path('module', 'ng_node_calender') . '/js/angular.js');
+    drupal_add_js(drupal_get_path('module', 'ng_node_calender') . '/js/fullcalendar.js');
+    drupal_add_js(drupal_get_path('module', 'ng_node_calender') . '/js/gcal.js');
+    drupal_add_js(drupal_get_path('module', 'ng_node_calender') . '/js/calendar.js');
+    
+    drupal_add_js(drupal_get_path('module', 'ng_node_calender') . '/calendarDemo.js');
+    return theme('ng_node_calender');
+}
+/**
+ * Implements hook_theme
+ *
+ * @return array
+ */
+function ng_node_calender_theme() {
+    $themes = array();
+    $themes['ng_node_calender'] = array(
+        'template' => 'theme/ng_node_calender',
+        'parameters' => array(),
+    );
+    return $themes;
+}
+function ng_node_calender_form_alter(&$form, $form_state, $form_id) {
+  switch ($form_id) {
+    case 'event_node_form':
+  	  $form['#submit'] = array('event_node_form_submit_handler');
+   
+      break;
+  }
+}
+
+function event_node_form_submit_handler($form, &$form_state) {
+	
+	//$form_state['redirect'] = 'ng_node/calender_app';
+}
+
